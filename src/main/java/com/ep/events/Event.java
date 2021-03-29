@@ -37,4 +37,19 @@ public class Event {
     // Oridinal로 저장하면 순서로 저장을 하기 때문에 String으로 저장하길 권장
     @Enumerated(EnumType.STRING)
     private EventStatus eventStatus = EventStatus.DRAFT;
+
+    public void update() {
+        if(basePrice ==0 && maxPrice == 0){
+            setFree(true);
+        } else {
+            setFree(false);
+        }
+
+        if(location == null || location.isEmpty() || location.isBlank()){
+            setOffline(false);
+        } else {
+            setOffline(true);
+        }
+
+    }
 }
