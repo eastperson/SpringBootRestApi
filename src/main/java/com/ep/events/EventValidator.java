@@ -2,13 +2,17 @@ package com.ep.events;
 
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
+import org.springframework.validation.Validator;
 
 import java.time.LocalDateTime;
 
 @Component
-public class EventValidator {
+public class EventValidator implements Validator {
 
-    public void validate(EventDto eventDto, Errors errors){
+    @Override
+    public void validate(Object dto, Errors errors){
+        EventDto eventDto = (EventDto) dto;
+
         if(eventDto.getBasePrice() > eventDto.getMaxPrice() && eventDto.getMaxPrice() > 0){
             // 필드 에러
             errors.rejectValue("basePrice","wrongValue","BasePrice is wrong");
@@ -27,5 +31,10 @@ public class EventValidator {
         // TODO beginEventDateTime
         // TODO closeEnrollmentDateTime
 
+    }
+
+    @Override
+    public boolean supports(Class<?> clazz) {
+        return EventDto.class.isAssignableFrom(clazz);
     }
 }
