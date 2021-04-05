@@ -4,6 +4,7 @@ import com.ep.accounts.Account;
 import com.ep.accounts.AccountRole;
 import com.ep.accounts.AccountService;
 import com.ep.common.BaseControllerTest;
+import com.ep.commons.AppProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,24 +25,17 @@ class AuthServerConfigurationTest extends BaseControllerTest {
     @Autowired
     AccountService accountService;
 
+    @Autowired
+    AppProperties appProperties;
+
     @DisplayName("인증 토큰 발급 테스트")
     @Test
     void getAuthToekn() throws Exception {
-        String clientId = "myApp";
-        String clientSecret = "pass";
-        String username = "ep2@email.com";
-        String password = "123123";
-        Account account = Account.builder()
-                .email(username)
-                .password(password)
-                .roles(Set.of(AccountRole.ADMIN,AccountRole.USER))
-                .build();
-        accountService.saveAccount(account);
 
         mockMvc.perform(post("/oauth/token")
-                    .with(httpBasic(clientId,clientSecret))
-                    .param("username",username)
-                    .param("password",password)
+                    .with(httpBasic(appProperties.getClientId(),appProperties.getClientSecret()))
+                    .param("username",appProperties.getUserUsername())
+                    .param("password",appProperties.getUserPassword())
                     .param("grant_type","password"))
                 .andDo(print())
                 .andExpect(status().isOk())

@@ -31,7 +31,7 @@ public class AccountService implements UserDetailsService {
         // 우리가 사용하는 domain을 스프링 시큐리티가 정의한 인터페이스로 변환하는 역할을 한다.
         Account account = accountRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
-        return new User(account.getEmail(),account.getPassword(), authorities(account.getRoles()));
+        return new AccountAdapter(account);
     }
 
     private Collection<? extends GrantedAuthority> authorities(Set<AccountRole> roles) {

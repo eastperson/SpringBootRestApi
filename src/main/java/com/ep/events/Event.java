@@ -1,6 +1,8 @@
 package com.ep.events;
 
 import com.ep.accounts.Account;
+import com.ep.accounts.AccountSerializer;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -41,6 +43,7 @@ public class Event {
     private boolean free;
 
     @ManyToOne
+    @JsonSerialize(using = AccountSerializer.class)
     private Account owner;
 
 

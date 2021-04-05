@@ -6,6 +6,7 @@ import com.ep.accounts.AccountRole;
 import com.ep.accounts.AccountService;
 import com.ep.common.BaseControllerTest;
 import com.ep.common.RestDocsConfiguration;
+import com.ep.commons.AppProperties;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.bytebuddy.utility.RandomString;
@@ -57,12 +58,7 @@ public class EventControllerTests  extends BaseControllerTest {
     @Autowired EventRepository eventRepository;
     @Autowired AccountRepository accountRepository;
     @Autowired AccountService accountService;
-
-    @Before
-    public void setUp(){
-        eventRepository.deleteAll();
-        accountRepository.deleteAll();
-    }
+    @Autowired AppProperties appProperties;
 
     @DisplayName("이벤트 생성 테스트")
     @Test
@@ -105,6 +101,7 @@ public class EventControllerTests  extends BaseControllerTest {
                         links(
                                 linkWithRel("self").description("link to self"),
                                 linkWithRel("query-events").description("link to query events"),
+                                linkWithRel("create-event").description("link to update an existing"),
                                 linkWithRel("update-event").description("link to update an existing"),
                                 linkWithRel("profile").description("link to update an existing event")
                         ),
@@ -157,21 +154,11 @@ public class EventControllerTests  extends BaseControllerTest {
     }
 
     private String getAccessToken() throws Exception{
-        String clientId = "myApp";
-        String clientSecret = "pass";
-        String username = RandomString.make(5) +  "ep@email.com";
-        String password = "123123";
-        Account account = Account.builder()
-                .email(username)
-                .password(password)
-                .roles(Set.of(AccountRole.ADMIN,AccountRole.USER))
-                .build();
-        accountService.saveAccount(account);
 
         ResultActions perform = mockMvc.perform(post("/oauth/token")
-                .with(httpBasic(clientId,clientSecret))
-                .param("username",username)
-                .param("password",password)
+                .with(httpBasic(appProperties.getClientId(),appProperties.getClientSecret()))
+                .param("username",appProperties.getUserUsername())
+                .param("password",appProperties.getUserPassword())
                 .param("grant_type","password"))
                 .andDo(print())
                 .andExpect(status().isOk())
@@ -314,6 +301,32 @@ public class EventControllerTests  extends BaseControllerTest {
                 .andExpect(jsonPath("_embedded.eventList[0]._links.self").exists())
                 .andExpect(jsonPath("_links.self").exists())
                 .andExpect(jsonPath("_links.profile").exists())
+                .andDo(document("query-events"))
+        ;
+    }
+
+    @DisplayName("30개의 이벤트 10개씩 두번째 페이지 조회 - 인증정보 테스트")
+    @Test
+    void getEventsWithAuthentication() throws Exception{
+        // Given
+        // 이벤트 30개가 있어야 한다.
+        IntStream.range(0,30).forEach((i)->{
+            this.generateEvent(i);
+        });
+
+        mockMvc.perform(get("/api/events")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
+                .param("page","1")
+                .param("size","10")
+                .param("sort","name,DESC")
+        )
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("page").exists())
+                .andExpect(jsonPath("_embedded.eventList[0]._links.self").exists())
+                .andExpect(jsonPath("_links.self").exists())
+                .andExpect(jsonPath("_links.profile").exists())
+                .andExpect(jsonPath("_links.create-event").exists())
                 .andDo(document("query-events"))
         ;
     }

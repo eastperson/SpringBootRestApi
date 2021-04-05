@@ -1,8 +1,10 @@
 package com.ep.config;
 
 import com.ep.accounts.Account;
+import com.ep.accounts.AccountRepository;
 import com.ep.accounts.AccountRole;
 import com.ep.accounts.AccountService;
+import com.ep.commons.AppProperties;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
@@ -32,14 +34,23 @@ public class AppConfiguration {
         return new ApplicationRunner() {
 
             @Autowired AccountService accountService;
+            @Autowired AccountRepository accountRepository;
+            @Autowired AppProperties appProperties;
             @Override
             public void run(ApplicationArguments args) throws Exception {
-                Account account = Account.builder()
-                        .email("ep@email.com")
-                        .password("123123")
+
+                Account admin = Account.builder()
+                        .email(appProperties.getAdminUsername())
+                        .password(appProperties.getAdminPassword())
                         .roles(Set.of(AccountRole.ADMIN,AccountRole.USER))
                         .build();
-             accountService.saveAccount(account);
+                Account user = Account.builder()
+                        .email(appProperties.getUserUsername())
+                        .password(appProperties.getUserPassword())
+                        .roles(Set.of(AccountRole.USER))
+                        .build();
+             accountService.saveAccount(admin);
+             accountService.saveAccount(user);
             }
         };
     }

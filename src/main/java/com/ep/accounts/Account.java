@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import javax.persistence.Column;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
@@ -25,7 +26,9 @@ public class Account {
     @GeneratedValue
     private Integer id;
 
+    @Column(unique = true)
     private String email;
+
     private String password;
 
     // 가져올 Role이 적고 항상 필요하기 때문에 EAGER로 설정한다.
