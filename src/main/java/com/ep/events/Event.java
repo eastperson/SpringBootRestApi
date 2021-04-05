@@ -1,11 +1,13 @@
 package com.ep.events;
 
+import com.ep.accounts.Account;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.mapping.ToOne;
 import org.springframework.hateoas.RepresentationModel;
 
 import javax.persistence.Entity;
@@ -13,6 +15,8 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+import javax.persistence.OneToOne;
 import java.time.LocalDateTime;
 
 // 자바 빈 스펙에 맞춰야 한다.
@@ -35,6 +39,11 @@ public class Event {
     private int limitOfEnrollment;
     private boolean offline;
     private boolean free;
+
+    @ManyToOne
+    private Account owner;
+
+
     // Oridinal로 저장하면 순서로 저장을 하기 때문에 String으로 저장하길 권장
     @Enumerated(EnumType.STRING)
     private EventStatus eventStatus = EventStatus.DRAFT;

@@ -1,9 +1,17 @@
 package com.ep.events;
 
+import com.ep.accounts.Account;
+import com.ep.accounts.AccountRepository;
+import com.ep.accounts.AccountRole;
+import com.ep.accounts.AccountService;
 import com.ep.common.BaseControllerTest;
 import com.ep.common.RestDocsConfiguration;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.bytebuddy.utility.RandomString;
+import org.apache.tomcat.Jar;
 import org.hamcrest.Matchers;
+import org.junit.Before;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,9 +22,13 @@ import org.springframework.context.annotation.Import;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.oauth2.common.util.Jackson2JsonParser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 import static org.springframework.restdocs.headers.HeaderDocumentation.headerWithName;
@@ -26,9 +38,11 @@ import static org.springframework.restdocs.hypermedia.HypermediaDocumentation.li
 import static org.springframework.restdocs.hypermedia.HypermediaDocumentation.links;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.payload.PayloadDocumentation.relaxedRequestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.relaxedResponseFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
 import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -41,6 +55,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class EventControllerTests  extends BaseControllerTest {
 
     @Autowired EventRepository eventRepository;
+    @Autowired AccountRepository accountRepository;
+    @Autowired AccountService accountService;
+
+    @Before
+    public void setUp(){
+        eventRepository.deleteAll();
+        accountRepository.deleteAll();
+    }
 
     @DisplayName("이벤트 생성 테스트")
     @Test
@@ -63,6 +85,7 @@ public class EventControllerTests  extends BaseControllerTest {
                 //.eventStatus(EventStatus.PUBLISHED)
 
         mockMvc.perform(post("/api/events/create")
+                    .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                     .contentType(MediaType.APPLICATION_JSON_VALUE)
                     .accept(MediaTypes.HAL_JSON_VALUE)
                     .content(objectMapper.writeValueAsString(eventDto)))
@@ -105,7 +128,7 @@ public class EventControllerTests  extends BaseControllerTest {
                                 headerWithName(HttpHeaders.LOCATION).description("location header"),
                                 headerWithName(HttpHeaders.CONTENT_TYPE).description("Content type")
                         ),
-                        responseFields(
+                        relaxedResponseFields(
                                 fieldWithPath("id").description("identifier of new event"),
                                 fieldWithPath("name").description("Name of new event"),
                                 fieldWithPath("description").description("description of new event"),
@@ -129,6 +152,36 @@ public class EventControllerTests  extends BaseControllerTest {
                 ;
     }
 
+    private String getBearerToken() throws Exception {
+        return "Bearer " + getAccessToken();
+    }
+
+    private String getAccessToken() throws Exception{
+        String clientId = "myApp";
+        String clientSecret = "pass";
+        String username = RandomString.make(5) +  "ep@email.com";
+        String password = "123123";
+        Account account = Account.builder()
+                .email(username)
+                .password(password)
+                .roles(Set.of(AccountRole.ADMIN,AccountRole.USER))
+                .build();
+        accountService.saveAccount(account);
+
+        ResultActions perform = mockMvc.perform(post("/oauth/token")
+                .with(httpBasic(clientId,clientSecret))
+                .param("username",username)
+                .param("password",password)
+                .param("grant_type","password"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("access_token").exists())
+        ;
+        var responseBody = perform.andReturn().getResponse().getContentAsString();
+        Jackson2JsonParser jsonParser = new Jackson2JsonParser();
+        return jsonParser.parseMap(responseBody).get("access_token").toString();
+    }
+
     @DisplayName("이벤트 생성 테스트 - Event.update()")
     @Test
     void createEvent() throws Exception {
@@ -146,6 +199,7 @@ public class EventControllerTests  extends BaseControllerTest {
                 .build();
 
         mockMvc.perform(post("/api/events/create")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaTypes.HAL_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(eventDto)))
@@ -181,6 +235,7 @@ public class EventControllerTests  extends BaseControllerTest {
 
 
         mockMvc.perform(post("/api/events/create")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaTypes.HAL_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(event)))
@@ -196,6 +251,7 @@ public class EventControllerTests  extends BaseControllerTest {
                 .build();
 
         mockMvc.perform(post("/api/events/create")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaTypes.HAL_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(eventDto)))
@@ -223,6 +279,7 @@ public class EventControllerTests  extends BaseControllerTest {
 
 
         mockMvc.perform(post("/api/events/create")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaTypes.HAL_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(eventDto)))
@@ -295,7 +352,7 @@ public class EventControllerTests  extends BaseControllerTest {
     void updateEvent() throws Exception{
         Event event = generateEvent(1);
         EventUpdateForm eventUpdateForm = EventUpdateForm.builder()
-                .id(1L)
+                .id(event.getId())
                 .name("Spring")
                 .description("REST API Development with Spring")
                 .beginEnrollmentDateTime(LocalDateTime.now())
@@ -309,6 +366,7 @@ public class EventControllerTests  extends BaseControllerTest {
                 .build();
 
         mockMvc.perform(put("/api/events/update")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaTypes.HAL_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(eventUpdateForm)))
@@ -338,7 +396,7 @@ public class EventControllerTests  extends BaseControllerTest {
     void updateEvent_error_not_found() throws Exception{
         Event event = generateEvent(1);
         EventUpdateForm eventUpdateForm = EventUpdateForm.builder()
-                .id(5L)
+                .id(20L)
                 .name("Spring")
                 .description("REST API Development with Spring")
                 .beginEnrollmentDateTime(LocalDateTime.now())
@@ -352,6 +410,7 @@ public class EventControllerTests  extends BaseControllerTest {
                 .build();
 
         mockMvc.perform(put("/api/events/update")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaTypes.HAL_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(eventUpdateForm)))
@@ -368,6 +427,7 @@ public class EventControllerTests  extends BaseControllerTest {
                 .build();
 
         mockMvc.perform(put("/api/events/update")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaTypes.HAL_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(eventUpdateForm)))
@@ -400,6 +460,7 @@ public class EventControllerTests  extends BaseControllerTest {
                 .build();
 
         mockMvc.perform(put("/api/events/update")
+                .header(HttpHeaders.AUTHORIZATION, getBearerToken())
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .accept(MediaTypes.HAL_JSON_VALUE)
                 .content(objectMapper.writeValueAsString(eventUpdateForm)))
